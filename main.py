@@ -44,15 +44,34 @@ alpha_functions = {
 # === Load Price Data ===
 price_data = load_equity_data(tickers, start=start_date, end=end_date)
 
+# === Collect Results ===
+results = []
+
 # === Loop Through Alphas ===
 for alpha_name, alpha_func in alpha_functions.items():
-    print(f"\n=== {alpha_name} ===")
-
     for ticker in tickers:
-        print(f"\n--- {ticker} on {ticker} ---")
         try:
             df = price_data[ticker].copy()
             signal = alpha_func(df)
-            run_backtest(signal.to_frame(name=ticker), {ticker: df}, [ticker])
+            metrics = run_backtest(signal.to_frame(name=ticker), {ticker: df}, [ticker])
+            results.append({
+                "Alpha": alpha_name,
+                "Ticker": ticker,
+                "Return (%)": round(metrics["total_return"] * 100, 2),
+                "Sharpe": round(metrics["sharpe_ratio"], 2),
+                "Max Drawdown (%)": round(metrics["max_drawdown"] * 100, 2),
+            })
         except Exception as e:
-            print(f"Backtest failed for {ticker}: {e}")
+            results.append({
+                "Alpha": alpha_name,
+                "Ticker": ticker,
+                "Return (%)": "ERR",
+                "Sharpe": "ERR",
+                "Max Drawdown (%)": "ERR",
+            })
+            print(f"Backtest failed for {ticker} with {alpha_name}: {e}")
+
+# === Display Summary Table ===
+summary_df = pd.DataFrame(results)
+print("\n=== Backtest Summary ===")
+print(summary_df.to_string(index=False))
