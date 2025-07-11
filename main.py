@@ -11,7 +11,8 @@ price_data = load_equity_data(tickers, start=start_date, end=end_date)
 
 # Apply and test each alpha independently
 for ticker in tickers:
-    df = price_data[ticker]
+    df = price_data[ticker].copy()
+    df['returns'] = df['close'].pct_change()
     signal_df = apply_all_alphas(df)
 
     for alpha_name in signal_df.columns:
