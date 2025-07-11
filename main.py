@@ -34,15 +34,14 @@ for alpha_name in alpha_list:
         module = importlib.import_module(f"alphas.{alpha_name}")
         alpha_func = getattr(module, alpha_name)
 
-        signal_df = pd.DataFrame()
-
         for ticker in tickers:
+            print(f"\n=== {alpha_name} on {ticker} ===")
+
             df = price_data[ticker].copy()
             signal = alpha_func(df)
-            signal.name = ticker
-            signal_df[ticker] = signal
+            signal.name = alpha_name
 
-        run_backtest(signal_df, price_data, tickers)
+            run_backtest(signal.to_frame(ticker), price_data, [ticker])
 
     except Exception as e:
         print(f"\nError processing {alpha_name}: {e}")
