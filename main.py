@@ -12,7 +12,11 @@ from alphas import (
 )
 
 # === Parameters ===
-tickers = ["AAPL", "MSFT", "GOOG"]
+tickers = [
+    "AAPL", "MSFT", "GOOG", "AMZN", "META",
+    "NVDA", "TSLA", "UNH", "JPM", "V",
+    "JNJ", "HD", "MA", "PG", "AVGO"
+]
 start_date = "2020-01-01"
 end_date = "2023-01-01"
 
