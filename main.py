@@ -30,37 +30,21 @@ alpha_functions = {
     "alpha_101": alpha_101,
 }
 
-# Store results
-results_summary = []
-
 # Run each alpha on each ticker
 for alpha_name, alpha_func in alpha_functions.items():
     print(f"\n=== {alpha_name} ===")
     for ticker in tickers:
         print(f"\n--- {ticker} on {ticker} ---")
         try:
-            # Extract the dataframe for the specific ticker
+            # Extract data for the specific ticker
             df = price_data[ticker].copy() if is_dict else price_data[price_data["ticker"] == ticker].copy()
-
-            # Ensure datetime index
             df.index = pd.to_datetime(df.index)
 
             # Generate alpha signal
             signal = alpha_func(df)
 
             # Run backtest
-            result = run_backtest(signal.to_frame(name=alpha_name), price_data, [ticker])
-            if result:
-                result["alpha"] = alpha_name
-                result["ticker"] = ticker
-                results_summary.append(result)
+            run_backtest(signal.to_frame(name=alpha_name), price_data, [ticker])
+
         except Exception as e:
             print(f"Backtest failed for {ticker}: {e}")
-
-# Save results if any
-if results_summary:
-    summary_df = pd.DataFrame(results_summary)
-    summary_df.to_csv("backtest_results_summary.csv", index=False)
-    print("\nAll backtests completed. Summary saved to 'backtest_results_summary.csv'.")
-else:
-    print("\nNo valid backtest results to save.")
