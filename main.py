@@ -8,19 +8,19 @@ from alphas.alpha_004 import alpha_004
 from alphas.alpha_005 import alpha_005
 from alphas.alpha_101 import alpha_101
 
-# List of tickers and date range
+# Define parameters
 tickers = ["AAPL", "MSFT", "GOOG"]
 start_date = "2020-01-01"
 end_date = "2023-01-01"
 
-# Load historical price data
+# Load price data
 print(f"Downloading data for: {', '.join(tickers)}")
 price_data = load_equity_data(tickers, start=start_date, end=end_date)
 
-# Determine if price_data is a dict or DataFrame
+# Check if data is dict (YahooFinance version returns dict)
 is_dict = isinstance(price_data, dict)
 
-# Dictionary of alpha functions to test
+# Define alphas to test
 alpha_functions = {
     "alpha_001": alpha_001,
     "alpha_002": alpha_002,
@@ -36,15 +36,16 @@ for alpha_name, alpha_func in alpha_functions.items():
     for ticker in tickers:
         print(f"\n--- {ticker} on {ticker} ---")
         try:
-            # Extract data for the specific ticker
-            df = price_data[ticker].copy() if is_dict else price_data[price_data["ticker"] == ticker].copy()
+            # Slice the correct format of price data
+            df = price_data[ticker].copy() if is_dict else price_data[price_data['ticker'] == ticker].copy()
             df.index = pd.to_datetime(df.index)
 
             # Generate alpha signal
             signal = alpha_func(df)
 
-            # Run backtest
-            run_backtest(signal.to_frame(name=alpha_name), price_data, [ticker])
+            # Run backtest with the correct sub-data
+            price_subset = {ticker: df} if is_dict else df
+            run_backtest(signal.to_frame(name=alpha_name), price_subset, [ticker])
 
         except Exception as e:
             print(f"Backtest failed for {ticker}: {e}")
