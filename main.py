@@ -1,6 +1,6 @@
 import pandas as pd
 from utils.data_loader import load_equity_data
-from backtest.backtester import run_backtest
+from backtest.backtester import run_backtest, get_summary
 
 # === Import All Alphas ===
 from alphas import (
@@ -13,9 +13,9 @@ from alphas import (
 
 # === Parameters ===
 tickers = [
-    "AAPL", "MSFT", "GOOG", "AMZN", "META",
-    "NVDA", "TSLA", "UNH", "JPM", "V",
-    "JNJ", "HD", "MA", "PG", "AVGO"
+    "AAPL", "MSFT", "GOOG", "AMZN", "NVDA", "META",
+    "TSLA", "BRK-B", "JPM", "JNJ", "V", "UNH", "PG",
+    "XOM", "MA"
 ]
 start_date = "2020-01-01"
 end_date = "2023-01-01"
@@ -48,22 +48,17 @@ alpha_functions = {
 # === Load Price Data ===
 price_data = load_equity_data(tickers, start=start_date, end=end_date)
 
-# === Store results ===
-results = []
-
-# === Loop Through Alphas ===
+# === Run Backtests ===
 for alpha_name, alpha_func in alpha_functions.items():
     for ticker in tickers:
         try:
             df = price_data[ticker].copy()
             signal = alpha_func(df)
-            stats = run_backtest(signal.to_frame(name=ticker), {ticker: df}, [ticker], return_stats=True)
-            if stats:
-                results.append((alpha_name, ticker, *stats))
-        except Exception:
-            continue  # Silently skip errors
+            run_backtest(signal.to_frame(name=ticker), {ticker: df}, [ticker], alpha_name)
+        except Exception as e:
+            print(f"Backtest failed for {alpha_name} on {ticker}: {e}")
 
-# === Print Summary Table ===
-summary_df = pd.DataFrame(results, columns=["Alpha", "Ticker", "Return (%)", "Sharpe", "Max Drawdown (%)"])
-print("\n=== Backtest Summary ===")
-print(summary_df.to_string(index=False))
+# === Show Final Summary Table ===
+summary_df = get_summary()
+print("\n=== Backtest Summary (Ranked by Score) ===")
+print(summary_df.sort_values(by="Score", ascending=False))
