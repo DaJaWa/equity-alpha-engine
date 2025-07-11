@@ -13,14 +13,14 @@ tickers = ["AAPL", "MSFT", "GOOG"]
 start_date = "2020-01-01"
 end_date = "2023-01-01"
 
-# Load price data
+# Load data
 print(f"Downloading data for: {', '.join(tickers)}")
 price_data = load_equity_data(tickers, start=start_date, end=end_date)
 
-# Check if data is dict (YahooFinance version returns dict)
+# Detect if the loader returned a dict or DataFrame
 is_dict = isinstance(price_data, dict)
 
-# Define alphas to test
+# Define alphas
 alpha_functions = {
     "alpha_001": alpha_001,
     "alpha_002": alpha_002,
@@ -30,22 +30,28 @@ alpha_functions = {
     "alpha_101": alpha_101,
 }
 
-# Run each alpha on each ticker
+# Loop through each alpha and ticker
 for alpha_name, alpha_func in alpha_functions.items():
     print(f"\n=== {alpha_name} ===")
     for ticker in tickers:
         print(f"\n--- {ticker} on {ticker} ---")
         try:
-            # Slice the correct format of price data
-            df = price_data[ticker].copy() if is_dict else price_data[price_data['ticker'] == ticker].copy()
+            # Get data for ticker
+            if is_dict:
+                df = price_data[ticker].copy()
+            else:
+                df = price_data[price_data["ticker"] == ticker].copy()
+
             df.index = pd.to_datetime(df.index)
 
             # Generate alpha signal
             signal = alpha_func(df)
 
-            # Run backtest with the correct sub-data
-            price_subset = {ticker: df} if is_dict else df
-            run_backtest(signal.to_frame(name=alpha_name), price_subset, [ticker])
+            # Run backtest
+            if is_dict:
+                run_backtest(signal.to_frame(name=alpha_name), {ticker: df}, [ticker])
+            else:
+                run_backtest(signal.to_frame(name=alpha_name), df, [ticker])
 
         except Exception as e:
             print(f"Backtest failed for {ticker}: {e}")
