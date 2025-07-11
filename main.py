@@ -17,6 +17,9 @@ end_date = "2023-01-01"
 print(f"Downloading data for: {', '.join(tickers)}")
 price_data = load_equity_data(tickers, start=start_date, end=end_date)
 
+# Determine if price_data is a dict or DataFrame
+is_dict = isinstance(price_data, dict)
+
 # Dictionary of alpha functions to test
 alpha_functions = {
     "alpha_001": alpha_001,
@@ -36,8 +39,16 @@ for alpha_name, alpha_func in alpha_functions.items():
     for ticker in tickers:
         print(f"\n--- {ticker} on {ticker} ---")
         try:
-            df = price_data[ticker].copy()
+            # Extract the dataframe for the specific ticker
+            df = price_data[ticker].copy() if is_dict else price_data[price_data["ticker"] == ticker].copy()
+
+            # Ensure datetime index
+            df.index = pd.to_datetime(df.index)
+
+            # Generate alpha signal
             signal = alpha_func(df)
+
+            # Run backtest
             result = run_backtest(signal.to_frame(name=alpha_name), price_data, [ticker])
             if result:
                 result["alpha"] = alpha_name
