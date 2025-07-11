@@ -1,24 +1,28 @@
 from utils.data_loader import load_equity_data
-from alphas.alpha_101 import alpha_101
+from alphas.alpha_engine import apply_all_alphas
 from backtest.backtester import run_backtest
 import pandas as pd
 
-# Define tickers to test
+# Define tickers and date range
 tickers = ["AAPL", "MSFT", "GOOG"]
 start_date = "2020-01-01"
 end_date = "2023-01-01"
 
-# Load data
+# Load OHLCV data
 price_data = load_equity_data(tickers, start=start_date, end=end_date)
 
-# Compute alpha signals
-alpha_signals = {}
+# Storage for per-alpha performance
+all_alpha_results = {}
+
+# Loop through all tickers and apply all alphas
 for ticker in tickers:
-    df = price_data[ticker].copy()
-    alpha_signals[ticker] = alpha_101(df)
+    df = price_data[ticker]
+    all_signals = apply_all_alphas(df)
 
-# Combine signals into a DataFrame
-signal_df = pd.DataFrame(alpha_signals)
+    # Run backtest for each alpha independently
+    for alpha_name in all_signals.columns:
+        signal_series = all_signals[alpha_name].dropna()
+        signal_df = pd.DataFrame({ticker: signal_series})
 
-# Run backtest
-run_backtest(signal_df, price_data, tickers)
+        print(f"\n=== Running backtest for {alpha_name} on {ticker} ===")
+        run_backtest(signal_df, price_data, [ticker])
