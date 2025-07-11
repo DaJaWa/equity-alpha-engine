@@ -1,6 +1,7 @@
 def alpha_001(df):
     try:
         import numpy as np
+        import pandas as pd
         from scipy.stats import rankdata
 
         returns = df['returns']
