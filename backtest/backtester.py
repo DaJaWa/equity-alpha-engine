@@ -11,6 +11,9 @@ def run_backtest(signal_df, price_data, tickers, holding_period=1):
     - price_data: dict of DataFrames keyed by ticker, each with OHLCV + returns
     - tickers: list of tickers to test
     - holding_period: how many days to hold the position
+
+    Returns:
+    - dict with total_return, sharpe_ratio, and max_drawdown
     """
     for ticker in tickers:
         try:
@@ -63,5 +66,13 @@ def run_backtest(signal_df, price_data, tickers, holding_period=1):
             plt.tight_layout()
             plt.show()
 
+            # ✅ Return metrics
+            return {
+                "total_return": total_return,
+                "sharpe_ratio": sharpe_ratio,
+                "max_drawdown": max_drawdown
+            }
+
         except Exception as e:
             print(f"Backtest failed for {ticker}: {e}")
+            return None
