@@ -59,6 +59,6 @@ for alpha_name, alpha_func in alpha_functions.items():
             print(f"Backtest failed for {alpha_name} on {ticker}: {e}")
 
 # === Show Final Summary Table ===
-summary_df = get_summary()
+summary_df = get_summary().round(2)
 print("\n=== Backtest Summary (Ranked by Score) ===")
 print(summary_df.sort_values(by="Score", ascending=False))
