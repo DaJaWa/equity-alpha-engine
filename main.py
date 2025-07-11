@@ -15,7 +15,12 @@ for ticker in tickers:
     df['returns'] = df['close'].pct_change()
     signal_df = apply_all_alphas(df)
 
-    for alpha_name in signal_df.columns:
-        signal = signal_df[alpha_name].dropna()
-        print(f"\n=== {alpha_name} on {ticker} ===")
-        run_backtest(signal.to_frame(ticker), price_data, [ticker])
+for alpha_name in signal_df.columns:
+    signal = signal_df[alpha_name].dropna()
+    if signal.empty:
+        print(f"[WARNING] {alpha_name} on {ticker} produced no signal — skipping.")
+        continue
+
+    print(f"\n{alpha_name} on {ticker} — sample values:\n{signal.tail(5)}")
+
+    run_backtest(signal.to_frame(ticker), price_data, [ticker])
