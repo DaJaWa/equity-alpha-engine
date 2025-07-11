@@ -29,7 +29,7 @@ def run_backtest(signal_df, price_data, tickers, top_n=1, bottom_n=1, holding_pe
         longs = scores.nlargest(top_n).index
         shorts = scores.nsmallest(bottom_n).index
 
-        future_returns = returns_df.loc[date + pd.Timedelta(days=holding_period)]
+        future_returns = returns_df.shift(-holding_period).loc[date]
         long_return = future_returns[longs].mean()
         short_return = future_returns[shorts].mean()
 
