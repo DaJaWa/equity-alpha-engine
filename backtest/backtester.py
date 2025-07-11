@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def run_backtest(signal_df, price_data, tickers, holding_period=1):
+def run_backtest(signal_df, price_data, tickers, holding_period=1, return_stats=False):
     """
     Backtest a trading strategy using alpha signals.
 
@@ -11,16 +11,15 @@ def run_backtest(signal_df, price_data, tickers, holding_period=1):
     - price_data: dict of DataFrames keyed by ticker, each with OHLCV + returns
     - tickers: list of tickers to test
     - holding_period: how many days to hold the position
+    - return_stats: if True, return performance stats instead of printing/plotting
 
     Returns:
-    - dict with total_return, sharpe_ratio, and max_drawdown
+        Tuple: (return %, sharpe ratio, max drawdown %) if return_stats is True
     """
     for ticker in tickers:
         try:
             signal = signal_df[ticker]
             returns_df = price_data[ticker]['returns']
-
-            print(f"\n=== {signal_df.columns[0]} on {ticker} ===")
 
             # Align and clean
             aligned = pd.concat([signal, returns_df], axis=1, keys=['signal', 'returns']).dropna()
@@ -50,29 +49,25 @@ def run_backtest(signal_df, price_data, tickers, holding_period=1):
             else:
                 sharpe_ratio = float('nan')
 
-            # Print results
-            print(f"Total Return: {total_return * 100:.2f}%")
-            print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
-            print(f"Max Drawdown: {max_drawdown * 100:.2f}%")
+            if return_stats:
+                return round(total_return * 100, 2), round(sharpe_ratio, 2), round(max_drawdown * 100, 2)
+            else:
+                print(f"\n=== {signal_df.columns[0]} on {ticker} ===")
+                print(f"Total Return: {total_return * 100:.2f}%")
+                print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+                print(f"Max Drawdown: {max_drawdown * 100:.2f}%")
 
-            # Plot performance
-            plt.figure(figsize=(10, 5))
-            plt.plot(result_df['cumulative'], label='Cumulative Return')
-            plt.title(f"{signal_df.columns[0]} on {ticker}")
-            plt.xlabel("Date")
-            plt.ylabel("Portfolio Value")
-            plt.grid(True)
-            plt.legend()
-            plt.tight_layout()
-            plt.show()
-
-            # ✅ Return metrics
-            return {
-                "total_return": total_return,
-                "sharpe_ratio": sharpe_ratio,
-                "max_drawdown": max_drawdown
-            }
+                plt.figure(figsize=(10, 5))
+                plt.plot(result_df['cumulative'], label='Cumulative Return')
+                plt.title(f"{signal_df.columns[0]} on {ticker}")
+                plt.xlabel("Date")
+                plt.ylabel("Portfolio Value")
+                plt.grid(True)
+                plt.legend()
+                plt.tight_layout()
+                plt.show()
 
         except Exception as e:
-            print(f"Backtest failed for {ticker}: {e}")
+            if not return_stats:
+                print(f"Backtest failed for {ticker}: {e}")
             return None
