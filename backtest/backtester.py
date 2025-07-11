@@ -1,73 +1,53 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
-def run_backtest(signal_df, price_data, tickers, holding_period=1, return_stats=False):
-    """
-    Backtest a trading strategy using alpha signals.
+# Global list to collect backtest results
+results = []
 
-    Parameters:
-    - signal_df: DataFrame with datetime index and one column per alpha signal
-    - price_data: dict of DataFrames keyed by ticker, each with OHLCV + returns
-    - tickers: list of tickers to test
-    - holding_period: how many days to hold the position
-    - return_stats: if True, return performance stats instead of printing/plotting
-
-    Returns:
-        Tuple: (return %, sharpe ratio, max drawdown %) if return_stats is True
-    """
+def run_backtest(signal_df, price_data, tickers, alpha_name, holding_period=1):
     for ticker in tickers:
         try:
             signal = signal_df[ticker]
             returns_df = price_data[ticker]['returns']
 
-            # Align and clean
             aligned = pd.concat([signal, returns_df], axis=1, keys=['signal', 'returns']).dropna()
             signal = aligned['signal']
             returns = aligned['returns']
 
-            # Generate position: use previous day's signal
             position = np.sign(signal.shift(1))
-
-            # Apply holding period by forward shifting returns
             future_returns = returns.shift(-holding_period)
-
-            # Calculate strategy returns
             strat_returns = position * future_returns
 
-            # Build result df
             result_df = pd.DataFrame(index=aligned.index)
             result_df['return'] = strat_returns.fillna(0)
             result_df['cumulative'] = (1 + result_df['return']).cumprod()
 
-            # Compute metrics
             total_return = result_df['cumulative'].iloc[-1] - 1
             max_drawdown = (result_df['cumulative'] / result_df['cumulative'].cummax() - 1).min()
+            sharpe_ratio = (
+                result_df['return'].mean() / result_df['return'].std() * np.sqrt(252)
+                if result_df['return'].std() > 0 else float('nan')
+            )
 
-            if result_df['return'].std() > 0:
-                sharpe_ratio = result_df['return'].mean() / result_df['return'].std() * np.sqrt(252)
-            else:
-                sharpe_ratio = float('nan')
+            # Compute custom score
+            score = (
+                0.5 * sharpe_ratio +
+                0.4 * total_return * 100 +
+                0.1 * max_drawdown * 100
+            )
 
-            if return_stats:
-                return round(total_return * 100, 2), round(sharpe_ratio, 2), round(max_drawdown * 100, 2)
-            else:
-                print(f"\n=== {signal_df.columns[0]} on {ticker} ===")
-                print(f"Total Return: {total_return * 100:.2f}%")
-                print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
-                print(f"Max Drawdown: {max_drawdown * 100:.2f}%")
-
-                plt.figure(figsize=(10, 5))
-                plt.plot(result_df['cumulative'], label='Cumulative Return')
-                plt.title(f"{signal_df.columns[0]} on {ticker}")
-                plt.xlabel("Date")
-                plt.ylabel("Portfolio Value")
-                plt.grid(True)
-                plt.legend()
-                plt.tight_layout()
-                plt.show()
+            # Save results to global list
+            results.append({
+                'Alpha': alpha_name,
+                'Ticker': ticker,
+                'Return (%)': total_return * 100,
+                'Sharpe': sharpe_ratio,
+                'Max Drawdown (%)': max_drawdown * 100,
+                'Score': score
+            })
 
         except Exception as e:
-            if not return_stats:
-                print(f"Backtest failed for {ticker}: {e}")
-            return None
+            print(f"Backtest failed for {alpha_name} on {ticker}: {e}")
+
+def get_summary():
+    return pd.DataFrame(results)
