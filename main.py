@@ -17,7 +17,7 @@ tickers = [
     "TSLA", "BRK-B", "JPM", "JNJ", "V", "UNH", "PG",
     "XOM", "MA"
 ]
-start_date = "2020-01-01"
+start_date = "2013-01-01"
 end_date = "2023-01-01"
 
 # === Map Alpha Names to Functions ===
