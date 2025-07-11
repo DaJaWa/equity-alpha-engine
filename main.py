@@ -60,5 +60,5 @@ for alpha_name, alpha_func in alpha_functions.items():
 
 # === Show Final Summary Table ===
 summary_df = get_summary().round(2)
-print("\n=== Backtest Summary (Ranked by Score) ===")
-print(summary_df.sort_values(by="Score", ascending=False))
+print("\n=== Backtest Summary (Top 20 Ranked by Score) ===")
+print(summary_df.sort_values(by="Score", ascending=False).head(20))
