@@ -35,14 +35,21 @@ for alpha_name, alpha_func in alpha_functions.items():
     print(f"\n=== {alpha_name} ===")
     for ticker in tickers:
         print(f"\n--- {ticker} on {ticker} ---")
-        df = price_data[ticker].copy()
-        signal = alpha_func(df)
-        result = run_backtest(signal.to_frame(name=alpha_name), price_data, [ticker])
-        result["alpha"] = alpha_name
-        result["ticker"] = ticker
-        results_summary.append(result)
+        try:
+            df = price_data[ticker].copy()
+            signal = alpha_func(df)
+            result = run_backtest(signal.to_frame(name=alpha_name), price_data, [ticker])
+            if result:
+                result["alpha"] = alpha_name
+                result["ticker"] = ticker
+                results_summary.append(result)
+        except Exception as e:
+            print(f"Backtest failed for {ticker}: {e}")
 
-# Create summary table
-summary_df = pd.DataFrame(results_summary)
-summary_df.to_csv("backtest_results_summary.csv", index=False)
-print("\nAll backtests completed. Summary saved to 'backtest_results_summary.csv'.")
+# Save results if any
+if results_summary:
+    summary_df = pd.DataFrame(results_summary)
+    summary_df.to_csv("backtest_results_summary.csv", index=False)
+    print("\nAll backtests completed. Summary saved to 'backtest_results_summary.csv'.")
+else:
+    print("\nNo valid backtest results to save.")
