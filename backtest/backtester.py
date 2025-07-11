@@ -2,53 +2,66 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def run_backtest(signal_df, price_data, tickers, top_n=1, bottom_n=1, holding_period=1):
+def run_backtest(signal_df, price_data, tickers, holding_period=1):
     """
-    Run a simple long-short backtest using alpha signals.
+    Backtest a trading strategy using alpha signals.
 
     Parameters:
-        signal_df: DataFrame of signals (tickers as columns)
-        price_data: dict of price DataFrames per ticker
-        tickers: list of tickers
-        top_n: number of long positions
-        bottom_n: number of short positions
-        holding_period: how long to hold positions (in days)
+    - signal_df: DataFrame with datetime index and one column per alpha signal
+    - price_data: dict of DataFrames keyed by ticker, each with OHLCV + returns
+    - tickers: list of tickers to test
+    - holding_period: how many days to hold the position
     """
-    signal_df = signal_df.dropna()
-    signal_df = signal_df.rank(axis=1)  # cross-sectional ranking
-
-    returns_df = pd.DataFrame(index=signal_df.index)
-
     for ticker in tickers:
-        returns_df[ticker] = price_data[ticker]['returns'].reindex(signal_df.index)
+        try:
+            signal = signal_df[ticker]
+            returns_df = price_data[ticker]['returns']
 
-    portfolio_returns = []
+            print(f"\n=== {signal_df.columns[0]} on {ticker} ===")
 
-    for date in signal_df.index[:-holding_period]:
-        scores = signal_df.loc[date]
-        longs = scores.nlargest(top_n).index
-        shorts = scores.nsmallest(bottom_n).index
+            # Align and clean
+            aligned = pd.concat([signal, returns_df], axis=1, keys=['signal', 'returns']).dropna()
+            signal = aligned['signal']
+            returns = aligned['returns']
 
-        future_returns = returns_df.shift(-holding_period).loc[date]
-        long_return = future_returns[longs].mean()
-        short_return = future_returns[shorts].mean()
+            # Generate position: use previous day's signal
+            position = np.sign(signal.shift(1))
 
-        daily_return = long_return - short_return
-        portfolio_returns.append((date, daily_return))
+            # Apply holding period by forward shifting returns
+            future_returns = returns.shift(-holding_period)
 
-    # Create DataFrame of returns
-    result_df = pd.DataFrame(portfolio_returns, columns=["date", "return"]).set_index("date")
-    result_df['cumulative'] = (1 + result_df['return']).cumprod()
+            # Calculate strategy returns
+            strat_returns = position * future_returns
 
-    # Plot
-    result_df['cumulative'].plot(title="Backtest Equity Curve", figsize=(10, 5))
-    plt.grid(True)
-    plt.ylabel("Cumulative Return")
-    plt.xlabel("Date")
-    plt.show()
+            # Build result df
+            result_df = pd.DataFrame(index=aligned.index)
+            result_df['return'] = strat_returns.fillna(0)
+            result_df['cumulative'] = (1 + result_df['return']).cumprod()
 
-    # Stats
-    print("\nBacktest Summary:")
-    print(f"Total Return: {result_df['cumulative'].iloc[-1] - 1:.2%}")
-    print(f"Sharpe Ratio: {result_df['return'].mean() / result_df['return'].std() * np.sqrt(252):.2f}")
-    print(f"Max Drawdown: {(result_df['cumulative'].cummax() - result_df['cumulative']).max():.2%}")
+            # Compute metrics
+            total_return = result_df['cumulative'].iloc[-1] - 1
+            max_drawdown = (result_df['cumulative'] / result_df['cumulative'].cummax() - 1).min()
+
+            if result_df['return'].std() > 0:
+                sharpe_ratio = result_df['return'].mean() / result_df['return'].std() * np.sqrt(252)
+            else:
+                sharpe_ratio = float('nan')
+
+            # Print results
+            print(f"Total Return: {total_return * 100:.2f}%")
+            print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+            print(f"Max Drawdown: {max_drawdown * 100:.2f}%")
+
+            # Plot performance
+            plt.figure(figsize=(10, 5))
+            plt.plot(result_df['cumulative'], label='Cumulative Return')
+            plt.title(f"{signal_df.columns[0]} on {ticker}")
+            plt.xlabel("Date")
+            plt.ylabel("Portfolio Value")
+            plt.grid(True)
+            plt.legend()
+            plt.tight_layout()
+            plt.show()
+
+        except Exception as e:
+            print(f"Backtest failed for {ticker}: {e}")
